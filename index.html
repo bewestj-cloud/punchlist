@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#142132">
+<title>P929 Punch List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E4E8EB; --panel:#FFFFFF; --ink:#142132; --muted:#5A6876; --line:#C8D0D6;
+  --water:#0A6C9E; --open:#C77A00; --open-bg:#FFF1D6; --closed:#2C7A4B; --closed-bg:#DDF0E3;
+  --crit:#B3261E; --crit-bg:#FBE0DD; --pending:#0A6C9E;
+  --body:"Barlow", "Segoe UI", Roboto, Arial, sans-serif;
+  --cond:"Barlow Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1923; --panel:#18242F; --ink:#E7EDF2; --muted:#9AA8B5; --line:#2B3A47;
+    --water:#4FB0E3; --open:#F0A733; --open-bg:#3A2A0C; --closed:#5CC48A; --closed-bg:#16301F;
+    --crit:#F07167; --crit-bg:#3B1714; --pending:#4FB0E3;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 150px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:400 16px/1.4 var(--body);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.hidden{display:none !important}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+/* Header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:#fff;padding:12px 0 10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header.top{background:#0A121A}}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.doc{font:700 21px/1.1 var(--cond);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.doc small{font:500 13px var(--body);opacity:.75;margin-left:6px}
+.top-actions{display:flex;gap:6px}
+.icon-btn{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:6px 9px;font-size:14px;white-space:nowrap}
+.overall{font:600 15px var(--body);opacity:.9;margin:4px 0 8px}
+
+/* Area strip */
+.strip{display:flex;gap:3px;height:44px}
+.seg{position:relative;flex:1 1 0;min-width:40px;background:rgba(255,255,255,.12);border:0;border-radius:4px;overflow:hidden;padding:0;color:#fff}
+.seg .fill{position:absolute;left:0;bottom:0;top:0;background:var(--closed);opacity:.9}
+.seg span{position:relative;display:block;font:700 15px/1 var(--cond);padding:6px 6px 0;text-align:left}
+.seg em{position:relative;display:block;white-space:nowrap;overflow:hidden;font:500 12px/1 var(--body);font-style:normal;padding:3px 6px 0;opacity:.9;text-align:left}
+
+/* Filters */
+.filters{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr,120px));z-index:15;background:var(--bg);padding:10px 0 8px;border-bottom:1px solid var(--line)}
+.seg-ctl{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg-ctl button{flex:1;border:0;background:transparent;border-radius:7px;padding:8px 4px;font-weight:600;font-size:15px}
+.seg-ctl button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.filter-row{display:flex;gap:8px;margin-top:8px}
+.filter-row select,.filter-row input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:15px}
+
+/* List */
+main{padding-bottom:110px}
+.area-h{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 8px;gap:8px}
+.area-h h2{margin:0;font:700 21px/1.15 var(--cond)}
+.area-h h2 b{color:var(--water);margin-right:6px}
+.area-h .cnt{color:var(--muted);font-size:14px;white-space:nowrap}
+.add-btn{display:block;width:100%;margin-top:6px;background:transparent;border:1.5px dashed var(--line);color:var(--muted);border-radius:10px;padding:10px;font-weight:600}
+ul.items{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;padding:12px;border-top:1px solid var(--line);width:100%;text-align:left;background:transparent;border-left:0;border-right:0;border-bottom:0}
+li:first-child .item{border-top:0}
+.tick{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--open);display:grid;place-items:center;margin-top:1px;background:var(--panel)}
+.tick svg{width:18px;height:18px;opacity:0}
+.st-Closed .tick{background:var(--closed);border-color:var(--closed)}
+.st-Closed .tick svg{opacity:1}
+.st-Critical .tick{border-color:var(--crit);background:var(--crit-bg)}
+.desc{font-weight:600;font-size:16px;line-height:1.3}
+.st-Closed .desc{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.cmt{grid-column:2;color:var(--muted);font-size:14.5px}
+.meta{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.tag{font:600 12.5px/1 var(--body);padding:4px 7px;border-radius:5px;background:var(--bg);color:var(--muted)}
+.tag.resp{background:transparent;border:1px solid var(--line)}
+.tag.local{background:var(--pending);color:#fff}
+.tag.sent{background:transparent;border:1px solid var(--pending);color:var(--pending)}
+.tag.crit{background:var(--crit-bg);color:var(--crit)}
+.tag.warn{background:var(--open-bg);color:var(--open)}
+.id{font:700 15px/1 var(--cond);color:var(--muted);padding-top:9px;white-space:nowrap}
+.empty{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;color:var(--muted)}
+
+/* Bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:25;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(20,33,50,.12)}
+.bar .wrap{display:flex;align-items:center;gap:12px;padding:0}
+.bar p{margin:0;flex:1;font-size:15px}
+.bar p b{font:700 20px var(--cond);margin-right:4px}
+.btn{border:0;border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;background:var(--water);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.ok{background:var(--closed)}
+.btn.danger{background:transparent;color:var(--crit);border:1.5px solid var(--crit)}
+.btn[disabled]{opacity:.45}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(10,18,26,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));animation:up .18s ease-out}
+@media (min-width:700px){.scrim{align-items:center}.sheet{border-radius:16px}}
+@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet h3{margin:0 0 2px;font:700 22px/1.15 var(--cond)}
+.sheet .sub{color:var(--muted);margin:0 0 14px;font-size:14.5px}
+.field{margin:12px 0}
+.field label{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
+.field textarea{min-height:76px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.status-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.status-pick button{border:2px solid var(--line);background:var(--panel);border-radius:10px;padding:11px 4px;font-weight:600}
+.status-pick button[aria-pressed="true"][data-v="Open"]{border-color:var(--open);background:var(--open-bg);color:var(--open)}
+.status-pick button[aria-pressed="true"][data-v="Critical"]{border-color:var(--crit);background:var(--crit-bg);color:var(--crit)}
+.status-pick button[aria-pressed="true"][data-v="Closed"]{border-color:var(--closed);background:var(--closed-bg);color:var(--closed)}
+.photos{display:flex;flex-wrap:wrap;gap:8px}
+.photos figure{margin:0;position:relative}
+.photos img{width:84px;height:84px;object-fit:cover;border-radius:8px;display:block}
+.photos figure button{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--crit);color:#fff;font-size:14px;line-height:1}
+.photo-add{width:84px;height:84px;border:1.5px dashed var(--line);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-weight:600;font-size:13px;text-align:center;cursor:pointer}
+.notes{margin:10px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.notes li{padding:6px 0;border-top:1px solid var(--line)}
+.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.actions .btn{flex:1}
+.hint{font-size:13.5px;color:var(--muted);margin:6px 0 0}
+pre.summary{white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:12px;font:13.5px/1.45 var(--body);max-height:240px;overflow:auto;margin:10px 0 0}
+
+/* Lock */
+.lock{min-height:100vh;display:grid;place-items:center;padding:24px}
+.lock .card{width:100%;max-width:380px}
+.lock h1{font:700 40px/1 var(--cond);margin:0 0 6px}
+.lock p{color:var(--muted);margin:0 0 18px}
+.err{color:var(--crit);font-weight:600;margin:8px 0 0;font-size:14.5px}
+
+/* PM */
+.pm{background:var(--panel);border:2px solid var(--water);border-radius:12px;padding:14px;margin-top:14px}
+.pm h2{margin:0 0 4px;font:700 20px var(--cond);color:var(--water)}
+.pm .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pm .row .btn{flex:1 1 180px;font-size:15px;padding:10px 12px}
+.inbox{list-style:none;padding:0;margin:10px 0 0}
+.inbox li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:14.5px}
+.inbox input{width:20px;height:20px;margin-top:2px}
+.inbox .x{color:var(--muted);font-size:13.5px}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--panel);padding:10px 16px;border-radius:10px;font-weight:600;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="lock" class="lock hidden">
+  <div class="card">
+    <h1>P929 punch list</h1>
+    <p>Enter the site passcode and your name. Both are remembered on this phone.</p>
+    <div class="field"><label for="lk-name">Your name</label><input id="lk-name" autocomplete="name" placeholder="e.g. Jaco Willemse"></div>
+    <div class="field"><label for="lk-pass">Passcode</label><input id="lk-pass" type="password" autocomplete="current-password"></div>
+    <button class="btn" id="lk-go" style="width:100%">Open punch list</button>
+    <p class="err" id="lk-err"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="wrap">
+      <div class="top-row">
+        <div class="doc" id="h-doc">P929</div>
+        <div class="top-actions">
+          <button class="icon-btn" id="b-refresh" title="Load latest list">Refresh</button>
+          <button class="icon-btn" id="b-menu">Menu</button>
+        </div>
+      </div>
+      <div class="overall" id="h-overall"></div>
+      <div class="strip" id="strip"></div>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="wrap">
+      <div class="seg-ctl" role="group" aria-label="Show">
+        <button data-f="open" aria-pressed="true">Open</button>
+        <button data-f="closed" aria-pressed="false">Closed</button>
+        <button data-f="all" aria-pressed="false">All</button>
+      </div>
+      <div class="filter-row">
+        <select id="f-resp" aria-label="Responsible party"></select>
+        <input id="f-q" type="search" placeholder="Search items" aria-label="Search">
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section id="pm" class="pm hidden"></section>
+    <div id="list"></div>
+  </main>
+
+  <div class="bar" id="bar">
+    <div class="wrap">
+      <p id="bar-txt"></p>
+      <button class="btn" id="b-send">Send update</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<input type="file" id="photo-in" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="import-in" accept=".txt,.json,application/json,text/plain" multiple class="hidden">
+
+<script>
+/* ===== Settings you may change ===== */
+const CONFIG = {
+  dataUrl: 'punchlist.enc.json',   // encrypted master list in this repo
+  updateEmail: '',                 // optional: email address for the "Email" fallback, e.g. 'name@proxa.co.za'
+  parties: ['NCEIC','ALS','Devcotech','PROXA','SBS','Proxa/SBS','HUBER WARRANTY']
+};
+/* =================================== */
+
+const LS = {pass:'p929.pass', name:'p929.name', cache:'p929.cache', edits:'p929.edits', initials:'p929.initials', pm:'p929.pmMaster'};
+const PM = new URLSearchParams(location.search).has('pm');
+let ENV=null, BASE=null, PASS='', NAME='', EDITS={}, FILTER={s:'open', resp:'', q:''}, INBOX=[], PM_DIRTY=false;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fmtDT = ms => new Date(ms).toLocaleString('en-ZA',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+const stamp = ms => { const d=new Date(ms), p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+const slug = s => (s||'site').trim().replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'');
+function lsGet(k, d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch{ return d; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast('Phone storage is full. Send your update, then remove some photos.'); return false; } }
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3200); }
+
+/* ---------- Encryption (AES-GCM, key from passcode via PBKDF2) ---------- */
+const b64e = buf => { const a=new Uint8Array(buf); let s=''; for(let i=0;i<a.length;i+=0x8000) s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000)); return btoa(s); };
+const b64d = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function deriveKey(pass, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function decryptEnv(env, pass){
+  const key = await deriveKey(pass, b64d(env.salt), env.iter);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64d(env.iv)}, key, b64d(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function encryptObj(obj, pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)), iter=200000;
+  const key=await deriveKey(pass, salt, iter);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return {v:1, kdf:'PBKDF2-SHA256', iter, salt:b64e(salt), iv:b64e(iv), ct:b64e(ct)};
+}
+
+/* ---------- Boot ---------- */
+async function fetchEnv(){
+  try{
+    const r = await fetch(CONFIG.dataUrl + '?t=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    const env = await r.json();
+    lsSet(LS.cache, env);
+    return {env, online:true};
+  }catch{ return {env:lsGet(LS.cache,null), online:false}; }
+}
+async function boot(){
+  if(!window.crypto || !crypto.subtle){ document.body.innerHTML='<p style="padding:20px">Open this page from its https:// link (GitHub Pages). It cannot unlock from a local file on this browser.</p>'; return; }
+  const {env, online} = await fetchEnv();
+  if(!env){ showLock('Could not load the punch list. Connect to the internet and reload.'); return; }
+  ENV = env;
+  if(!online) toast('Offline: showing the last downloaded list.');
+  NAME = lsGet(LS.name,''); PASS = lsGet(LS.pass,'');
+  EDITS = lsGet(LS.edits,{});
+  if(!NAME || !PASS) return showLock();
+  try{ await unlock(PASS); } catch{ localStorage.removeItem(LS.pass); showLock('That passcode did not open the list. It may have been changed; ask the project manager.'); }
+}
+function showLock(msg){
+  $('#app').classList.add('hidden'); $('#lock').classList.remove('hidden');
+  $('#lk-name').value = lsGet(LS.name,''); $('#lk-err').textContent = msg||'';
+}
+$('#lk-go').onclick = async () => {
+  const n=$('#lk-name').value.trim(), p=$('#lk-pass').value.trim();
+  if(!n){ $('#lk-err').textContent='Enter your name so your updates can be traced.'; return; }
+  if(!ENV){ $('#lk-err').textContent='The list has not downloaded yet. Check signal and reload.'; return; }
+  try{ NAME=n; lsSet(LS.name,n); await unlock(p); }
+  catch{ $('#lk-err').textContent='That passcode did not open the list.'; }
+};
+async function unlock(p){
+  let data = await decryptEnv(ENV, p);
+  PASS=p; lsSet(LS.pass,p);
+  if(PM){ const local = lsGet(LS.pm,null); if(local && local.meta.savedAt > data.meta.savedAt){ data = local; PM_DIRTY = true; } }
+  BASE = data;
+  reconcile();
+  $('#lock').classList.add('hidden'); $('#app').classList.remove('hidden');
+  buildRespFilter(); render(); if(PM) renderPM();
+}
+
+/* Drop local changes that the master list has already absorbed */
+function reconcile(){
+  const byId = Object.fromEntries(BASE.items.map(i=>[i.id,i]));
+  const temps = new Set(BASE.items.map(i=>i.tempId).filter(Boolean));
+  let changed=false;
+  for(const [id,e] of Object.entries(EDITS)){
+    if(!e.sentAt) continue;
+    const b = byId[id];
+    if(temps.has(id) || (b && b.lastUpdate >= e.ts)){ delete EDITS[id]; changed=true; }
+  }
+  if(changed) lsSet(LS.edits, EDITS);
+}
+
+/* ---------- Model helpers ---------- */
+const FIELDS = ['status','cat','sub','proxa','client','date'];
+function effective(){
+  const out = BASE.items.map(b => { const e = EDITS[b.id]; return e ? {...b, ...pick(e, FIELDS), _edit:e} : {...b}; });
+  for(const e of Object.values(EDITS)) if(e.isNew && !BASE.items.some(i=>i.id===e.id||i.tempId===e.id)) out.push({...e.item, ...pick(e,FIELDS), _edit:e});
+  return out;
+}
+function pick(o, keys){ const r={}; keys.forEach(k=>{ if(o[k]!==undefined) r[k]=o[k]; }); return r; }
+function areaName(code){ return (BASE.meta.areas.find(a=>a.code===code)||{}).name || code; }
+function partyList(){ const s=new Set(CONFIG.parties); BASE.items.forEach(i=>i.resp&&s.add(i.resp)); return [...s]; }
+
+/* ---------- Render ---------- */
+function buildRespFilter(){
+  const parties = [...new Set(effective().map(i=>i.resp).filter(Boolean))].sort();
+  $('#f-resp').innerHTML = '<option value="">All parties</option>' + parties.map(p=>`<option>${esc(p)}</option>`).join('');
+  $('#f-resp').value = FILTER.resp;
+}
+function render(){
+  const items = effective();
+  const m = BASE.meta;
+  $('#h-doc').innerHTML = `${esc(m.docNo)}${PM?'<small>PM</small>':''}`;
+  const closed = items.filter(i=>i.status==='Closed').length;
+  $('#h-overall').textContent = `Rev ${m.rev}: ${closed} of ${items.length} closed (${Math.round(100*closed/Math.max(items.length,1))}%), saved ${fmtDT(m.savedAt)}`;
+
+  $('#strip').innerHTML = m.areas.map(a=>{
+    const ai = items.filter(i=>i.area===a.code), c = ai.filter(i=>i.status==='Closed').length;
+    const open = ai.length - c;
+    return `<button class="seg" data-jump="${a.code}" style="flex-grow:${Math.max(ai.length,3)}" aria-label="${esc(a.name)}: ${open} open">
+      <div class="fill" style="width:${ai.length?100*c/ai.length:0}%"></div><span>${a.code}</span><em>${open}${ai.length>=8?' open':''}</em></button>`;
+  }).join('');
+
+  const q = FILTER.q.toLowerCase();
+  const show = i => (FILTER.s==='all' || (FILTER.s==='open' ? i.status!=='Closed' : i.status==='Closed'))
+                   && (!FILTER.resp || i.resp===FILTER.resp)
+                   && (!q || `${i.id} ${i.desc} ${i.comment} ${i.resp}`.toLowerCase().includes(q));
+  let html='';
+  for(const a of m.areas){
+    const all = items.filter(i=>i.area===a.code);
+    const vis = all.filter(show).sort((x,y)=>(x.no||999)-(y.no||999));
+    const open = all.filter(i=>i.status!=='Closed').length;
+    html += `<section id="area-${a.code}"><div class="area-h"><h2><b>${a.code}</b>${esc(a.name)}</h2><span class="cnt">${open} open / ${all.length}</span></div>`;
+    html += vis.length ? `<ul class="items">${vis.map(rowHTML).join('')}</ul>` : `<div class="empty">Nothing ${FILTER.s==='closed'?'closed':'open'} here${FILTER.resp||q?' for this filter':''}.</div>`;
+    html += `<button class="add-btn" data-add="${a.code}">+ Raise new item in ${a.code}</button></section>`;
+  }
+  $('#list').innerHTML = html;
+
+  const pending = Object.values(EDITS).filter(e=>!e.sentAt).length;
+  if(PM){ $('#bar-txt').innerHTML = PM_DIRTY ? '<b>!</b> Master changed: download and commit it' : 'Master is up to date'; $('#b-send').textContent='Download master'; $('#b-send').disabled=!PM_DIRTY; }
+  else { $('#bar-txt').innerHTML = pending ? `<b>${pending}</b> change${pending>1?'s':''} not sent yet` : 'All your changes are sent'; $('#b-send').disabled=!pending; }
+}
+function rowHTML(i){
+  const e=i._edit, tags=[];
+  if(i.resp) tags.push(`<span class="tag resp">${esc(i.resp)}</span>`);
+  if(i.cat) tags.push(`<span class="tag">CAT ${esc(i.cat)}</span>`);
+  if(i.status==='Critical') tags.push(`<span class="tag crit">Critical</span>`);
+  if(i.status==='Closed' && !i.proxa) tags.push(`<span class="tag warn">Proxa sign-off outstanding</span>`);
+  if(i.status==='Closed' && i.date) tags.push(`<span class="tag">Closed ${esc(i.date)}</span>`);
+  if(e) tags.push(e.sentAt ? `<span class="tag sent">Sent ${fmtDT(e.sentAt)}</span>` : `<span class="tag local">Not sent</span>`);
+  if(e && e.photos && e.photos.length) tags.push(`<span class="tag">${e.photos.length} photo${e.photos.length>1?'s':''}</span>`);
+  return `<li class="st-${i.status}"><button class="item" data-id="${esc(i.id)}">
+    <span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+    <span class="desc">${esc(i.desc)}</span><span class="id">${esc(i.id)}</span>
+    ${i.comment?`<span class="cmt">${esc(i.comment)}</span>`:''}
+    <span class="meta">${tags.join('')}</span></button></li>`;
+}
+
+/* ---------- Events ---------- */
+document.querySelectorAll('.seg-ctl button').forEach(b=>b.onclick=()=>{
+  FILTER.s=b.dataset.f; document.querySelectorAll('.seg-ctl button').forEach(x=>x.setAttribute('aria-pressed', x===b)); render();
+});
+$('#f-resp').onchange = e => { FILTER.resp=e.target.value; render(); };
+$('#f-q').oninput = e => { FILTER.q=e.target.value; render(); };
+$('#list').onclick = e => {
+  const it=e.target.closest('[data-id]'); if(it) return openItem(it.dataset.id);
+  const add=e.target.closest('[data-add]'); if(add) return openNew(add.dataset.add);
+};
+$('#strip').onclick = e => { const s=e.target.closest('[data-jump]'); if(s) document.getElementById('area-'+s.dataset.jump)?.scrollIntoView({behavior:'smooth'}); };
+$('#b-refresh').onclick = async () => {
+  const {env, online} = await fetchEnv();
+  if(!online){ toast('No connection. Still showing the last downloaded list.'); return; }
+  ENV=env; try{ const d=await decryptEnv(env, PASS); if(!PM || !PM_DIRTY || d.meta.savedAt>BASE.meta.savedAt){ BASE=d; PM_DIRTY=false; } reconcile(); buildRespFilter(); render(); if(PM) renderPM(); toast('Latest list loaded.'); }
+  catch{ localStorage.removeItem(LS.pass); showLock('The passcode has changed. Ask the project manager for the new one.'); }
+};
+$('#b-menu').onclick = openMenu;
+$('#b-send').onclick = () => PM ? downloadMaster() : openSend();
+
+/* ---------- Modal ---------- */
+function modal(html){
+  $('#modal-root').innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const scrim = $('#modal-root .scrim');
+  scrim.addEventListener('click', e=>{ if(e.target===scrim) closeModal(); });
+  setTimeout(()=>scrim.querySelector('input,select,textarea,button')?.focus({preventScroll:true}),50);
+  return scrim;
+}
+function closeModal(){ $('#modal-root').innerHTML=''; }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ---------- Item editor ---------- */
+let DRAFT=null;
+function openItem(id){
+  const i = effective().find(x=>x.id===id); if(!i) return;
+  const e = EDITS[id];
+  DRAFT = {id, status:i.status, cat:i.cat||'', sub:i.sub||'', proxa:i.proxa||'', client:i.client||'', date:i.date||'', note:e?.note||'', photos:[...(e?.photos||[])]};
+  const notes = (i.siteNotes||[]).map(n=>`<li><b>${esc(n.by)}</b>, ${fmtDT(n.at)}: ${esc(n.text)}</li>`).join('');
+  const s = modal(`
+    <h3>${esc(i.desc)}</h3>
+    <p class="sub">${esc(i.id)} in ${esc(areaName(i.area))}, ${esc(i.resp||'No party')}, raised ${esc(i.reg||'-')}${i.comment?`<br>${esc(i.comment)}`:''}</p>
+    ${editorFields()}
+    ${notes?`<ul class="notes">${notes}</ul>`:''}
+    <div class="actions">
+      ${e && !PM ? `<button class="btn danger" id="m-discard">Discard my change</button>`:''}
+      <button class="btn ghost" id="m-cancel">Cancel</button>
+      <button class="btn ok" id="m-save">Save</button>
+    </div>`);
+  wireEditor(s);
+  s.querySelector('#m-cancel').onclick = closeModal;
+  if(s.querySelector('#m-discard')) s.querySelector('#m-discard').onclick = () => { delete EDITS[id]; lsSet(LS.edits,EDITS); closeModal(); render(); };
+  s.querySelector('#m-save').onclick = () => saveItem(i);
+}
+function editorFields(){
+  return `
+    <div class="field"><label>Status</label><div class="status-pick">
+      ${['Open','Critical','Closed'].map(v=>`<button type="button" data-v="${v}" aria-pressed="${DRAFT.status===v}">${v}</button>`).join('')}</div></div>
+    <div class="two">
+      <div class="field"><label for="m-date">Date closed</label><input id="m-date" type="date" value="${esc(DRAFT.date)}"></div>
+      <div class="field"><label for="m-cat">Category</label><select id="m-cat">${['','A','B','C','D'].map(c=>`<option value="${c}" ${DRAFT.cat===c?'selected':''}>${c?'CAT '+c:'Not set'}</option>`).join('')}</select></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="m-sub">Sub-contractor sign-off</label><input id="m-sub" list="dl-parties" value="${esc(DRAFT.sub)}" placeholder="e.g. NCEIC"></div>
+      <div class="field"><label for="m-proxa">Proxa sign-off</label><input id="m-proxa" value="${esc(DRAFT.proxa)}" placeholder="Initials"></div>
+    </div>
+    <div class="field"><label for="m-client">Client sign-off</label><input id="m-client" value="${esc(DRAFT.client)}" placeholder="Initials"></div>
+    <div class="field"><label for="m-note">Site note</label><textarea id="m-note" placeholder="What was done, or what is still holding it up">${esc(DRAFT.note)}</textarea></div>
+    ${PM?'':`<div class="field"><label>Photos</label><div class="photos" id="m-photos"></div><p class="hint">Photos go with your update. Keep it to the ones that prove the close-out.</p></div>`}
+    <datalist id="dl-parties">${partyList().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`;
+}
+function wireEditor(s){
+  s.querySelectorAll('.status-pick button').forEach(b=>b.onclick=()=>{
+    DRAFT.status=b.dataset.v; s.querySelectorAll('.status-pick button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    if(b.dataset.v==='Closed'){ const d=s.querySelector('#m-date'); if(!d.value) d.value=today(); const p=s.querySelector('#m-proxa'); if(!p.value) p.value=lsGet(LS.initials,''); }
+  });
+  if(!PM) drawPhotos();
+}
+function drawPhotos(){
+  const box=$('#m-photos'); if(!box) return;
+  box.innerHTML = DRAFT.photos.map((p,k)=>`<figure><img src="${p}" alt="Photo ${k+1}"><button data-rm="${k}" aria-label="Remove photo">×</button></figure>`).join('')
+    + `<label class="photo-add" for="photo-in">+ Add<br>photo</label>`;
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ DRAFT.photos.splice(+b.dataset.rm,1); drawPhotos(); });
+}
+$('#photo-in').onchange = async e => {
+  const f=e.target.files[0]; e.target.value=''; if(!f||!DRAFT) return;
+  try{ DRAFT.photos.push(await shrink(f)); drawPhotos(); }catch{ toast('That photo could not be read.'); }
+};
+function shrink(file, max=1280, q=0.7){
+  return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ const k=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=URL.createObjectURL(file); });
+}
+function readDraft(s){
+  return {status:DRAFT.status, date:s.querySelector('#m-date').value, cat:s.querySelector('#m-cat').value,
+    sub:s.querySelector('#m-sub').value.trim(), proxa:s.querySelector('#m-proxa').value.trim(), client:s.querySelector('#m-client').value.trim(),
+    note:s.querySelector('#m-note').value.trim()};
+}
+function saveItem(i){
+  const s=$('#modal-root .sheet'); const d=readDraft(s);
+  if(d.status==='Closed' && !d.date){ toast('Add the date it was closed.'); return; }
+  if(d.proxa) lsSet(LS.initials, d.proxa);
+  if(PM){
+    const m = BASE.items.find(x=>x.id===i.id);
+    Object.assign(m, pick(d,FIELDS)); m.lastUpdate=Date.now();
+    if(d.note) m.siteNotes=[...(m.siteNotes||[]), {by:NAME, at:Date.now(), text:d.note}];
+    markPmDirty(); closeModal(); render(); return;
+  }
+  const base = BASE.items.find(x=>x.id===i.id);
+  const prev = EDITS[i.id];
+  const unchanged = base && FIELDS.every(k=>(base[k]||'')===(d[k]||'')) && !d.note && !DRAFT.photos.length;
+  if(unchanged && !prev?.isNew){ delete EDITS[i.id]; }
+  else EDITS[i.id] = {...(prev||{}), id:i.id, ...pick(d,FIELDS), note:d.note, photos:DRAFT.photos, by:NAME, ts:Date.now(), sentAt:null};
+  if(!lsSet(LS.edits, EDITS)) return;
+  closeModal(); render();
+}
+
+/* ---------- New item ---------- */
+function openNew(area){
+  DRAFT={status:'Open', cat:'', sub:'', proxa:'', client:'', date:'', note:'', photos:[]};
+  const s = modal(`
+    <h3>Raise new item in ${esc(area)}</h3><p class="sub">${esc(areaName(area))}</p>
+    <div class="field"><label for="n-desc">Item description</label><input id="n-desc" placeholder="Equipment / location - what is wrong"></div>
+    <div class="field"><label for="n-cmt">Comment</label><input id="n-cmt" placeholder="Action required"></div>
+    <div class="field"><label for="n-resp">Responsible party</label><input id="n-resp" list="dl-parties" placeholder="e.g. NCEIC"></div>
+    ${editorFields()}
+    <div class="actions"><button class="btn ghost" id="m-cancel">Cancel</button><button class="btn ok" id="m-save">Raise item</button></div>`);
+  wireEditor(s);
+  s.querySelector('#m-cancel').onclick = closeModal;
+  s.querySelector('#m-save').onclick = () => {
+    const desc=s.querySelector('#n-desc').value.trim(); if(!desc){ toast('Describe the item first.'); return; }
+    const d=readDraft(s), now=Date.now();
+    const item={area, no:null, desc, comment:s.querySelector('#n-cmt').value.trim(), resp:s.querySelector('#n-resp').value.trim(), reg:today(), pid:'', photo:'', siteNotes:[], lastUpdate:0};
+    if(PM){
+      const no = Math.max(0,...BASE.items.filter(x=>x.area===area).map(x=>x.no||0))+1;
+      BASE.items.push({...item, id:`${area}-${String(no).padStart(2,'0')}`, no, ...pick(d,FIELDS), lastUpdate:now, siteNotes:d.note?[{by:NAME,at:now,text:d.note}]:[]});
+      markPmDirty(); closeModal(); buildRespFilter(); render(); return;
+    }
+    const id = `${area}-N${now.toString(36).slice(-4).toUpperCase()}`;
+    EDITS[id] = {id, isNew:true, item:{...item, id}, ...pick(d,FIELDS), note:d.note, photos:DRAFT.photos, by:NAME, ts:now, sentAt:null};
+    if(!lsSet(LS.edits,EDITS)) return; closeModal(); buildRespFilter(); render();
+  };
+}
+
+/* ---------- Send update (site team) ---------- */
+function buildUpdate(){
+  const pending = Object.values(EDITS).filter(e=>!e.sentAt).sort((a,b)=>a.id.localeCompare(b.id));
+  const now=Date.now(), st=stamp(now), files=[], lines=[];
+  const changes = pending.map(e=>{
+    const base = BASE.items.find(x=>x.id===e.id);
+    const photoNames = (e.photos||[]).map((p,k)=>{ const n=`P929_${e.id}_${st}_${k+1}.jpg`; files.push(dataUrlToFile(p,n)); return n; });
+    return {id:e.id, isNew:!!e.isNew, item:e.isNew?e.item:undefined, desc:base?.desc||e.item?.desc,
+      before: base?pick(base,FIELDS):null, after:pick(e,FIELDS), note:e.note||'', by:e.by, ts:e.ts, photos:photoNames};
+  });
+  const payload={type:'p929-punch-update', v:1, doc:BASE.meta.docNo, baseSavedAt:BASE.meta.savedAt, from:NAME, sentAt:now, changes};
+  const fname=`P929_PL_update_${slug(NAME)}_${st}.txt`;
+  files.unshift(new File([JSON.stringify(payload,null,1)], fname, {type:'text/plain'}));
+  const groups = {Closed:[], Critical:[], Open:[]};
+  changes.forEach(c=>{ (groups[c.after.status]||groups.Open).push(c); });
+  lines.push(`${BASE.meta.docNo} punch list update`, `From: ${NAME}, ${fmtDT(now)}`, '');
+  for(const [k,arr] of Object.entries(groups)) if(arr.length){
+    lines.push(`${k} (${arr.length}):`);
+    arr.forEach(c=>{ const sig=[c.after.sub,c.after.proxa].filter(Boolean).join(' / ');
+      lines.push(`- ${c.isNew?'NEW ':''}${c.id} ${c.desc||''}${sig?` [signed ${sig}]`:''}${c.after.date&&k==='Closed'?` ${c.after.date}`:''}${c.note?` - ${c.note}`:''}${c.photos.length?` (${c.photos.length} photo)`:''}`); });
+    lines.push('');
+  }
+  lines.push(`Attached: ${fname}${files.length>1?` + ${files.length-1} photo(s)`:''}`);
+  return {pending, files, fname, text:lines.join('\n'), payload};
+}
+function dataUrlToFile(d, name){ const [h,b]=d.split(','); const bin=atob(b); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new File([a], name, {type:h.match(/:(.*?);/)[1]}); }
+function markSent(pending){ const t=Date.now(); pending.forEach(e=>{ if(EDITS[e.id]) EDITS[e.id].sentAt=t; }); lsSet(LS.edits,EDITS); closeModal(); render(); toast('Update marked as sent.'); }
+function download(file){ const a=document.createElement('a'); a.href=URL.createObjectURL(file); a.download=file.name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000); }
+function openSend(){
+  const u = buildUpdate(); if(!u.pending.length) return;
+  const canFiles = navigator.canShare && navigator.canShare({files:u.files});
+  const s = modal(`
+    <h3>Send update</h3>
+    <p class="sub">${u.pending.length} change${u.pending.length>1?'s':''}${u.files.length>1?` and ${u.files.length-1} photo${u.files.length>2?'s':''}`:''}. Send it to the project manager on WhatsApp or email.</p>
+    <pre class="summary">${esc(u.text)}</pre>
+    <div class="actions">
+      ${canFiles?`<button class="btn ok" id="s-share">Share update</button>`:`<button class="btn ok" id="s-dl">Download update file</button>`}
+      <button class="btn ghost" id="s-copy">Copy summary</button>
+      <button class="btn ghost" id="s-mail">Email</button>
+    </div>
+    <p class="hint">${canFiles?'Choose WhatsApp or email in the share menu. If WhatsApp drops the summary text, paste it with Copy summary.':'This browser cannot attach files directly: download the update file, then attach it to an email or WhatsApp to the project manager.'}</p>
+    <div class="actions"><button class="btn ghost" id="s-cancel">Not yet</button><button class="btn" id="s-done">I've sent it</button></div>`);
+  s.querySelector('#s-cancel').onclick=closeModal;
+  s.querySelector('#s-done').onclick=()=>markSent(u.pending);
+  s.querySelector('#s-copy').onclick=async()=>{ try{ await navigator.clipboard.writeText(u.text); toast('Summary copied.'); }catch{ toast('Copy blocked. Select the text above and copy it.'); } };
+  s.querySelector('#s-mail').onclick=()=>{ location.href=`mailto:${encodeURIComponent(CONFIG.updateEmail)}?subject=${encodeURIComponent(u.fname.replace('.txt',''))}&body=${encodeURIComponent(u.text+'\n\n(Attach the update file before sending.)')}`; };
+  if(canFiles) s.querySelector('#s-share').onclick=async()=>{
+    try{ await navigator.share({files:u.files, title:u.fname, text:u.text}); markSent(u.pending); }
+    catch(err){ if(err.name!=='AbortError') toast('Sharing failed. Use Copy summary and Email instead.'); }
+  };
+  else s.querySelector('#s-dl').onclick=()=>{ u.files.forEach((f,k)=>setTimeout(()=>download(f),k*350)); toast('Downloaded. Attach the files, then tap "I\'ve sent it".'); };
+}
+
+/* ---------- Menu ---------- */
+function openMenu(){
+  const s = modal(`
+    <h3>${esc(BASE.meta.project)}</h3>
+    <p class="sub">Signed in as ${esc(NAME)}, Rev ${esc(BASE.meta.rev)} (${esc(BASE.meta.revDate)})</p>
+    <ul class="notes">${(BASE.meta.team||[]).map(([r,n])=>`<li>${esc(r)}: <b>${esc(n)}</b></li>`).join('')}</ul>
+    <p class="hint" style="margin-top:12px"><b>Categories.</b> CAT A: must be fixed before acceptance and the next commissioning phase. CAT B: may roll into the next commissioning stage with interim authorisation. CAT C: can be fixed with the plant running, before final hand-over. CAT D: outside contract scope (site modification request).</p>
+    <div class="actions">
+      <button class="btn ghost" id="mn-name">Change my name</button>
+      <button class="btn ghost" id="mn-lock">Lock this phone</button>
+    </div>`);
+  s.querySelector('#mn-name').onclick=()=>{ const n=prompt('Your name', NAME); if(n&&n.trim()){ NAME=n.trim(); lsSet(LS.name,NAME); closeModal(); toast('Name updated.'); } };
+  s.querySelector('#mn-lock').onclick=()=>{
+    const unsent=Object.values(EDITS).filter(e=>!e.sentAt).length;
+    if(unsent && !confirm(`${unsent} change(s) are not sent. They stay on this phone, but lock anyway?`)) return;
+    localStorage.removeItem(LS.pass); PASS=''; closeModal(); showLock();
+  };
+}
+
+/* ---------- PM mode: merge updates, publish master, export Excel ---------- */
+function markPmDirty(){ PM_DIRTY=true; BASE.meta.savedAt=Date.now(); lsSet(LS.pm, BASE); renderPM(); }
+function renderPM(){
+  const box=$('#pm'); box.classList.remove('hidden');
+  const inbox = INBOX.length ? `<ul class="inbox">${INBOX.map((c,k)=>`<li><input type="checkbox" data-k="${k}" ${c._skip?'':'checked'} ${c._why?'disabled':''} aria-label="Apply ${esc(c.id)}">
+      <div><b>${esc(c.isNew?'NEW ':'')}${esc(c.id)}</b> ${esc(c.desc||'')}<br>
+      <span class="x">${esc(c.before?.status||'-')} to <b>${esc(c.after.status)}</b>${c.after.date?' on '+esc(c.after.date):''}${c.after.sub||c.after.proxa?`, signed ${esc([c.after.sub,c.after.proxa].filter(Boolean).join(' / '))}`:''}, ${esc(c.by)}, ${fmtDT(c.ts)}${c.note?`<br>Note: ${esc(c.note)}`:''}${c.photos?.length?`<br>Photos: ${esc(c.photos.join(', '))}`:''}${c._why?`<br><b>${esc(c._why)}</b>`:''}</span></div></li>`).join('')}</ul>
+      <div class="row"><button class="btn ok" id="pm-apply">Apply ticked changes</button><button class="btn ghost" id="pm-clear">Clear inbox</button></div>` : '';
+  box.innerHTML = `<h2>Project manager tools</h2>
+    <p class="hint">1. Import update files from the site team. 2. Check and apply. 3. Download the master and commit it to GitHub as <b>${esc(CONFIG.dataUrl)}</b>. Everyone gets it on their next refresh.</p>
+    <div class="row">
+      <button class="btn" id="pm-import">Import update files</button>
+      <button class="btn ghost" id="pm-xlsx">Export Excel</button>
+      <button class="btn ghost" id="pm-pass">Change passcode</button>
+    </div>${inbox}`;
+  box.querySelector('#pm-import').onclick=()=>$('#import-in').click();
+  box.querySelector('#pm-xlsx').onclick=exportXlsx;
+  box.querySelector('#pm-pass').onclick=async()=>{
+    const p=prompt('New passcode for the site team (at least 10 characters). The downloaded master will only open with this passcode.'); if(!p) return;
+    if(p.trim().length<10){ toast('Use at least 10 characters.'); return; }
+    PASS=p.trim(); lsSet(LS.pass,PASS); markPmDirty(); await downloadMaster(); toast('Commit the file, then send the new passcode to the team.');
+  };
+  box.querySelectorAll('.inbox input').forEach(cb=>cb.onchange=()=>{ INBOX[+cb.dataset.k]._skip=!cb.checked; });
+  if(INBOX.length){ box.querySelector('#pm-apply').onclick=applyInbox; box.querySelector('#pm-clear').onclick=()=>{ INBOX=[]; renderPM(); }; }
+  render();
+}
+$('#import-in').onchange = async e => {
+  const files=[...e.target.files]; e.target.value='';
+  let n=0, bad=0;
+  for(const f of files){
+    try{ const p=JSON.parse(await f.text()); if(p.type!=='p929-punch-update') throw 0;
+      p.changes.forEach(c=>{ c._file=f.name; if(!INBOX.some(x=>x.id===c.id&&x.ts===c.ts)){ INBOX.push(c); n++; } }); }
+    catch{ bad++; }
+  }
+  INBOX.sort((a,b)=>a.ts-b.ts);
+  const byId=Object.fromEntries(BASE.items.map(i=>[i.id,i]));
+  INBOX.forEach(c=>{ c._why='';
+    if(c.isNew){ if(BASE.items.some(i=>i.tempId===c.id)) c._why='Already in the master.'; }
+    else if(!byId[c.id]) c._why='Item not found in the master.';
+    else if(c.ts<=byId[c.id].lastUpdate) c._why='Master already has this or a newer change.'; });
+  renderPM(); toast(`${n} change(s) imported${bad?`, ${bad} file(s) not recognised`:''}.`);
+};
+function applyInbox(){
+  let n=0;
+  for(const c of INBOX){
+    if(c._skip||c._why) continue;
+    if(c.isNew){
+      const area=c.item.area, no=Math.max(0,...BASE.items.filter(x=>x.area===area).map(x=>x.no||0))+1;
+      BASE.items.push({...c.item, id:`${area}-${String(no).padStart(2,'0')}`, no, tempId:c.id, ...c.after, lastUpdate:c.ts,
+        siteNotes:c.note?[{by:c.by,at:c.ts,text:c.note+(c.photos?.length?` [photos: ${c.photos.join(', ')}]`:'')}]:[]});
+    } else {
+      const m=BASE.items.find(i=>i.id===c.id); Object.assign(m, c.after); m.lastUpdate=c.ts;
+      if(c.note||c.photos?.length) m.siteNotes=[...(m.siteNotes||[]), {by:c.by, at:c.ts, text:(c.note||'')+(c.photos?.length?` [photos: ${c.photos.join(', ')}]`:'')}];
+    }
+    n++;
+  }
+  INBOX=[]; if(n) markPmDirty(); buildRespFilter(); renderPM(); toast(`${n} change(s) applied. Download the master to publish.`);
+}
+async function downloadMaster(){
+  const rev=prompt('Revision for this issue of the punch list', BASE.meta.rev); if(rev===null) return;
+  BASE.meta.rev=rev.trim()||BASE.meta.rev; BASE.meta.revDate=today(); BASE.meta.savedAt=Date.now();
+  const env=await encryptObj(BASE, PASS);
+  download(new File([JSON.stringify(env)], CONFIG.dataUrl.split('/').pop(), {type:'application/json'}));
+  lsSet(LS.pm, BASE); PM_DIRTY=false; render(); renderPM();
+  toast(`Downloaded. Upload it to GitHub, replacing ${CONFIG.dataUrl}.`);
+}
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function exportXlsx(){
+  try{ if(!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'); }
+  catch{ toast('Excel export needs an internet connection.'); return; }
+  const items=effective(), wb=XLSX.utils.book_new(), m=BASE.meta;
+  const sum=[[`${m.project}`],[`${m.docNo} Rev ${m.rev} (${m.revDate})`],[],['Area','Total','Closed','Open','Critical','% Complete']];
+  m.areas.forEach(a=>{ const ai=items.filter(i=>i.area===a.code), c=ai.filter(i=>i.status==='Closed').length;
+    sum.push([`${a.code}: ${a.name}`, ai.length, c, ai.length-c, ai.filter(i=>i.status==='Critical').length, ai.length?c/ai.length:0]); });
+  const tc=items.filter(i=>i.status==='Closed').length;
+  sum.push(['Overall', items.length, tc, items.length-tc, items.filter(i=>i.status==='Critical').length, items.length?tc/items.length:0]);
+  const ws0=XLSX.utils.aoa_to_sheet(sum); ws0['!cols']=[{wch:42},{wch:8},{wch:8},{wch:8},{wch:9},{wch:11}];
+  for(let r=4;r<sum.length;r++){ const ref=XLSX.utils.encode_cell({r,c:5}); if(ws0[ref]) ws0[ref].z='0%'; }
+  XLSX.utils.book_append_sheet(wb, ws0, 'Area Summary');
+  m.areas.forEach(a=>{
+    const rows=[['#','Item ID','Punch item description','Comments','Status','PID','CAT','Photo ref','Responsible party','Date registered','Sign-off Sub Contr','Sign-off Proxa','Sign-off Client','Date closed','Site notes']];
+    items.filter(i=>i.area===a.code).sort((x,y)=>(x.no||999)-(y.no||999)).forEach(i=>rows.push([i.no||'',i.id,i.desc,i.comment,i.status,i.pid,i.cat,i.photo,i.resp,i.reg,i.sub,i.proxa,i.client,i.date,
+      (i.siteNotes||[]).map(n=>`${n.by} ${new Date(n.at).toISOString().slice(0,10)}: ${n.text}`).join(' | ')]));
+    const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:4},{wch:8},{wch:48},{wch:44},{wch:9},{wch:8},{wch:5},{wch:9},{wch:14},{wch:12},{wch:12},{wch:10},{wch:10},{wch:12},{wch:60}];
+    XLSX.utils.book_append_sheet(wb, ws, `${a.code} ${a.name}`.replace(/[\\/?*[\]:]/g,'').slice(0,31));
+  });
+  XLSX.writeFile(wb, `${m.docNo}_Rev${m.rev}_${today()}.xlsx`);
+}
+
+const setHdr=()=>document.documentElement.style.setProperty('--hdr', document.querySelector('header.top').offsetHeight+'px');
+new ResizeObserver(setHdr).observe(document.querySelector('header.top'));
+boot();
+</script>
+</body>
+</html>
