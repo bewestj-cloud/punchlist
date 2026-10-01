@@ -28,7 +28,10 @@ Pages site can be seen by anyone with the link, but the data only opens with the
 4. Works with poor signal: the last downloaded list and all unsent changes are kept on the phone.
 
 ## Project manager
-Open the site with `?pm` on the end: `https://<your-user>.github.io/<repo>/?pm`
+Open the app > **Menu** > **Project manager tools** > enter the PM password
+(or open the link with `?pm` on the end to be asked straight away). Tick "Remember on this
+device" to skip the password next time; **Menu > Leave PM tools** signs out.
+The PM password is stored in `index.html` only as a salted hash.
 1. **Import update files** (pick one or many `.txt` updates from WhatsApp/email).
 2. Review, untick anything you don't accept, **Apply ticked changes**.
 3. **Download master** > enter revision > upload the downloaded `punchlist.enc.json`

@@ -216,8 +216,11 @@ const CONFIG = {
 };
 /* =================================== */
 
-const LS = {pass:'p929.pass', name:'p929.name', cache:'p929.cache', edits:'p929.edits', initials:'p929.initials', pm:'p929.pmMaster'};
-const PM = new URLSearchParams(location.search).has('pm');
+const LS = {pmok:'p929.pmok', pass:'p929.pass', name:'p929.name', cache:'p929.cache', edits:'p929.edits', initials:'p929.initials', pm:'p929.pmMaster'};
+// PM password is stored only as a salted hash (the repo is public).
+const PM_LOCK = {salt:'syPxRRlT4ytyG/IVjX04EQ==', iter:150000, hash:'aA4nnAiJz0yqYi5x2bbeb2xac21iOzg5HthFTnfAVV0='};
+let PM = false;
+const WANT_PM = new URLSearchParams(location.search).has('pm');
 let ENV=null, BASE=null, PASS='', NAME='', EDITS={}, FILTER={s:'open', resp:'', q:''}, INBOX=[], PM_DIRTY=false;
 
 const $ = s => document.querySelector(s);
@@ -284,11 +287,49 @@ $('#lk-go').onclick = async () => {
 async function unlock(p){
   let data = await decryptEnv(ENV, p);
   PASS=p; lsSet(LS.pass,p);
-  if(PM){ const local = lsGet(LS.pm,null); if(local && local.meta.savedAt > data.meta.savedAt){ data = local; PM_DIRTY = true; } }
   BASE = data;
   reconcile();
   $('#lock').classList.add('hidden'); $('#app').classList.remove('hidden');
-  buildRespFilter(); render(); if(PM) renderPM();
+  buildRespFilter(); render();
+  if(lsGet(LS.pmok,'')===PM_LOCK.hash) enterPM();
+  else if(WANT_PM) askPM();
+}
+
+/* ---------- PM access ---------- */
+async function checkPM(pw){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', salt:b64d(PM_LOCK.salt), iterations:PM_LOCK.iter, hash:'SHA-256'}, base, 256);
+  return b64e(bits) === PM_LOCK.hash;
+}
+function askPM(){
+  const s = modal(`
+    <h3>Project manager tools</h3>
+    <p class="sub">Enter the PM password to import site updates and publish the master list.</p>
+    <div class="field"><label for="pm-pw">PM password</label><input id="pm-pw" type="password" autocomplete="off"></div>
+    <label class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pm-keep" checked style="width:18px;height:18px"> Remember on this device</label>
+    <p class="err" id="pm-err"></p>
+    <div class="actions"><button class="btn ghost" id="pm-cancel">Cancel</button><button class="btn" id="pm-go">Open PM tools</button></div>`);
+  const go = async () => {
+    const ok = await checkPM(s.querySelector('#pm-pw').value);
+    if(!ok){ s.querySelector('#pm-err').textContent='Wrong PM password.'; return; }
+    if(s.querySelector('#pm-keep').checked) lsSet(LS.pmok, PM_LOCK.hash);
+    closeModal(); enterPM(); toast('PM tools open.');
+  };
+  s.querySelector('#pm-go').onclick = go;
+  s.querySelector('#pm-pw').onkeydown = e => { if(e.key==='Enter') go(); };
+  s.querySelector('#pm-cancel').onclick = closeModal;
+}
+function enterPM(){
+  PM = true;
+  const local = lsGet(LS.pm,null);
+  if(local && local.meta.savedAt > BASE.meta.savedAt){ BASE = local; PM_DIRTY = true; }
+  buildRespFilter(); renderPM();
+}
+function leavePM(){
+  if(PM_DIRTY && !confirm('The master has changes you have not downloaded. They stay saved on this device. Leave PM tools anyway?')) return;
+  PM = false; INBOX = []; localStorage.removeItem(LS.pmok);
+  $('#pm').classList.add('hidden');
+  fetchEnv().then(async ({env}) => { if(env){ ENV=env; try{ BASE = await decryptEnv(env, PASS); }catch{} } PM_DIRTY=false; reconcile(); buildRespFilter(); render(); });
 }
 
 /* Drop local changes that the master list has already absorbed */
@@ -352,7 +393,7 @@ function render(){
 
   const pending = Object.values(EDITS).filter(e=>!e.sentAt).length;
   if(PM){ $('#bar-txt').innerHTML = PM_DIRTY ? '<b>!</b> Master changed: download and commit it' : 'Master is up to date'; $('#b-send').textContent='Download master'; $('#b-send').disabled=!PM_DIRTY; }
-  else { $('#bar-txt').innerHTML = pending ? `<b>${pending}</b> change${pending>1?'s':''} not sent yet` : 'All your changes are sent'; $('#b-send').disabled=!pending; }
+  else { $('#b-send').textContent='Send update'; $('#bar-txt').innerHTML = pending ? `<b>${pending}</b> change${pending>1?'s':''} not sent yet` : 'All your changes are sent'; $('#b-send').disabled=!pending; }
 }
 function rowHTML(i){
   const e=i._edit, tags=[];
@@ -572,9 +613,11 @@ function openMenu(){
     <ul class="notes">${(BASE.meta.team||[]).map(([r,n])=>`<li>${esc(r)}: <b>${esc(n)}</b></li>`).join('')}</ul>
     <p class="hint" style="margin-top:12px"><b>Categories.</b> CAT A: must be fixed before acceptance and the next commissioning phase. CAT B: may roll into the next commissioning stage with interim authorisation. CAT C: can be fixed with the plant running, before final hand-over. CAT D: outside contract scope (site modification request).</p>
     <div class="actions">
+      <button class="btn ghost" id="mn-pm">${PM?'Leave PM tools':'Project manager tools'}</button>
       <button class="btn ghost" id="mn-name">Change my name</button>
       <button class="btn ghost" id="mn-lock">Lock this phone</button>
     </div>`);
+  s.querySelector('#mn-pm').onclick=()=>{ closeModal(); PM ? leavePM() : askPM(); };
   s.querySelector('#mn-name').onclick=()=>{ const n=prompt('Your name', NAME); if(n&&n.trim()){ NAME=n.trim(); lsSet(LS.name,NAME); closeModal(); toast('Name updated.'); } };
   s.querySelector('#mn-lock').onclick=()=>{
     const unsent=Object.values(EDITS).filter(e=>!e.sentAt).length;
